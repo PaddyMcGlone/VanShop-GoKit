@@ -1,9 +1,13 @@
 package main
 
-import (
-	"fmt"	
+import (	
 	"context"
 	"github.com/go-kit/kit/endpoint"
+	"encoding/json"
+	"log"
+	"net/http"
+
+	httptransport "github.com/go-kit/kit/transport/http"
 )
 
 // Interface for the van service
@@ -35,7 +39,7 @@ func (vanService) StockList(s string) (Van, error) {
 
 func (vanService) Count (s string) int {
 	// Will eventually do a count to the db instance
-	return 1
+	return 100
 }
 
 
@@ -59,7 +63,7 @@ type countResponse struct {
 }
 
 //Adding the Endpoints
-func stockListEndpoint(svc VanService) endpoint.Endpoint  {
+func makeStockListEndpoint(svc VanService) endpoint.Endpoint  {
 	return func (_ context.Context, request interface{}) (interface{}, error)  {
 		req := request.(stockListRequest)
 		v, err := svc.StockList(req.S)
@@ -79,7 +83,43 @@ func makeCountEndpoint(svc VanService) endpoint.Endpoint {
 	}
 }
 
+//Adding transports
+func main(){
+	svc := vanService{}
 
-func main()  {
-	fmt.Println("Hello, world")
+	stockListHandler := httptransport.NewServer(
+		makeStockListEndpoint(svc),
+		decodeStockListRequest,
+		encodeResponse,
+	)
+
+	countHandler := httptransport.NewServer(
+		makeCountEndpoint(svc),
+		decodeCountRequest,
+		encodeResponse,
+	)
+
+	http.Handle("/stocklist", stockListHandler)
+	http.Handle("/count", countHandler)
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+func decodeStockListRequest(_ context.Context, r *http.Request) (interface{}, error)  {
+	var request stockListRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		return nil, err
+	}
+	return request, nil	
+}
+
+func decodeCountRequest(_ context.Context, r *http.Request) (interface{}, error)  {
+	var request countRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		return nil, err
+	}
+	return request, nil
+}
+
+func encodeResponse(_ context.Context, w http.ResponseWriter, Response interface{}) error{
+	return json.NewEncoder(w).Encode(Response)
 }
