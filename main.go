@@ -59,13 +59,13 @@ type countResponse struct {
 }
 
 //Adding the Endpoints
-func stockListEndpoint(suv VanService) endpoint.Endpoint  {
+func stockListEndpoint(svc VanService) endpoint.Endpoint  {
 	return func (_ context.Context, request interface{}) (interface{}, error)  {
-		req := request.(stockListResponse)
-		v, err := svc.StockList(req.v)
+		req := request.(stockListRequest)
+		v, err := svc.StockList(req.S)
 
 		if err != nil {
-			return stockListResponse{v, err.Error{}}, nil
+			return stockListResponse{v, err.Error()}, nil
 		}
 		return stockListResponse{v, ""}, nil
 	}
